@@ -1,0 +1,2461 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SmartCanteen AI — Demand Predictor</title>
+
+    <!-- Fonts -->
+    <link
+        href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&family=Outfit:wght@300;400;500;600&display=swap"
+        rel="stylesheet" />
+
+    <!-- Chart.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+
+    <!-- Supabase CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <style>
+        /* ══════════════════════════════════════════════
+   CSS VARIABLES & RESET
+══════════════════════════════════════════════ */
+        :root {
+            --bg: #04080f;
+            --bg2: #080f1a;
+            --bg3: #0c1628;
+            --border: #112240;
+            --border2: #1a3560;
+            --teal: #00e5cc;
+            --teal2: #00b8a4;
+            --amber: #ffb347;
+            --rose: #ff6b8a;
+            --violet: #a78bfa;
+            --green: #34d399;
+            --sky: #38bdf8;
+            --text: #e2eaf4;
+            --muted: #4a6080;
+            --muted2: #2a4060;
+            --font-head: 'Syne', sans-serif;
+            --font-body: 'Outfit', sans-serif;
+            --font-mono: 'DM Mono', monospace;
+            --r: 16px;
+            --r2: 12px;
+            --shadow: 0 8px 40px rgba(0, 229, 204, 0.06);
+        }
+
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: var(--font-body);
+            font-size: 14px;
+            line-height: 1.6;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 5px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--bg);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--border2);
+            border-radius: 99px;
+        }
+
+        /* ══════════════════════════════════════════════
+   ANIMATED BACKGROUND GRID
+══════════════════════════════════════════════ */
+        .grid-bg {
+            position: fixed;
+            inset: 0;
+            z-index: 0;
+            pointer-events: none;
+            background-image:
+                linear-gradient(rgba(0, 229, 204, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 229, 204, 0.03) 1px, transparent 1px);
+            background-size: 48px 48px;
+            animation: gridShift 20s linear infinite;
+        }
+
+        @keyframes gridShift {
+            0% {
+                background-position: 0 0;
+            }
+
+            100% {
+                background-position: 48px 48px;
+            }
+        }
+
+        /* Glow orbs */
+        .orb {
+            position: fixed;
+            border-radius: 50%;
+            filter: blur(80px);
+            pointer-events: none;
+            z-index: 0;
+            animation: orbFloat 8s ease-in-out infinite alternate;
+        }
+
+        .orb1 {
+            width: 500px;
+            height: 500px;
+            background: rgba(0, 229, 204, 0.05);
+            top: -150px;
+            right: -100px;
+        }
+
+        .orb2 {
+            width: 400px;
+            height: 400px;
+            background: rgba(167, 139, 250, 0.04);
+            bottom: -100px;
+            left: -80px;
+            animation-delay: -4s;
+        }
+
+        @keyframes orbFloat {
+            from {
+                transform: translate(0, 0) scale(1);
+            }
+
+            to {
+                transform: translate(20px, 30px) scale(1.05);
+            }
+        }
+
+        /* ══════════════════════════════════════════════
+   LAYOUT WRAPPER
+══════════════════════════════════════════════ */
+        #app {
+            position: relative;
+            z-index: 1;
+        }
+
+        /* ══════════════════════════════════════════════
+   HEADER / NAV
+══════════════════════════════════════════════ */
+        header {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: rgba(4, 8, 15, 0.85);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--border);
+            padding: 0 32px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            height: 64px;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-family: var(--font-head);
+            font-weight: 800;
+            font-size: 19px;
+            letter-spacing: -0.5px;
+        }
+
+        .logo-icon {
+            width: 38px;
+            height: 38px;
+            border-radius: 10px;
+            background: linear-gradient(135deg, var(--teal), var(--violet));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            box-shadow: 0 0 20px rgba(0, 229, 204, 0.3);
+        }
+
+        .logo span {
+            color: var(--teal);
+        }
+
+        nav {
+            display: flex;
+            gap: 4px;
+        }
+
+        .nav-btn {
+            padding: 7px 16px;
+            border-radius: 8px;
+            border: none;
+            background: transparent;
+            color: var(--muted);
+            font-family: var(--font-body);
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all .2s;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .nav-btn::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: var(--teal);
+            opacity: 0;
+            transition: opacity .2s;
+        }
+
+        .nav-btn:hover {
+            color: var(--text);
+        }
+
+        .nav-btn.active {
+            color: var(--teal);
+            background: rgba(0, 229, 204, 0.08);
+        }
+
+        .nav-btn.active::before {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 20%;
+            right: 20%;
+            height: 2px;
+            background: var(--teal);
+            border-radius: 99px;
+        }
+
+        .db-status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 12px;
+            font-family: var(--font-mono);
+            color: var(--muted);
+        }
+
+        .dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: var(--muted);
+            transition: background .4s;
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        .dot.connected {
+            background: var(--green);
+            box-shadow: 0 0 8px var(--green);
+        }
+
+        .dot.error {
+            background: var(--rose);
+            box-shadow: 0 0 8px var(--rose);
+            animation: none;
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                opacity: 1
+            }
+
+            50% {
+                opacity: .4
+            }
+        }
+
+        /* ══════════════════════════════════════════════
+   MAIN CONTENT AREA
+══════════════════════════════════════════════ */
+        main {
+            max-width: 1280px;
+            margin: 0 auto;
+            padding: 32px 24px 60px;
+        }
+
+        /* Tab panels */
+        .tab-panel {
+            display: none;
+            animation: fadeUp .45s cubic-bezier(.22, 1, .36, 1) both;
+        }
+
+        .tab-panel.active {
+            display: block;
+        }
+
+        @keyframes fadeUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: none;
+            }
+        }
+
+        /* ══════════════════════════════════════════════
+   CARDS
+══════════════════════════════════════════════ */
+        .card {
+            background: var(--bg2);
+            border: 1px solid var(--border);
+            border-radius: var(--r);
+            padding: 24px;
+            transition: border-color .3s, box-shadow .3s;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(0, 229, 204, 0.2), transparent);
+            opacity: 0;
+            transition: opacity .3s;
+        }
+
+        .card:hover {
+            border-color: var(--border2);
+            box-shadow: var(--shadow);
+        }
+
+        .card:hover::before {
+            opacity: 1;
+        }
+
+        .card-title {
+            font-family: var(--font-head);
+            font-weight: 700;
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: .1em;
+            color: var(--muted);
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .card-title .dot-accent {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--teal);
+            box-shadow: 0 0 6px var(--teal);
+        }
+
+        /* Grid layouts */
+        .grid-3 {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 16px;
+        }
+
+        .grid-2 {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 16px;
+        }
+
+        .grid-auto {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+            gap: 16px;
+        }
+
+        /* ══════════════════════════════════════════════
+   STAT CARDS
+══════════════════════════════════════════════ */
+        .stat-card {
+            background: var(--bg2);
+            border: 1px solid var(--border);
+            border-radius: var(--r);
+            padding: 22px 24px;
+            position: relative;
+            overflow: hidden;
+            animation: fadeUp .5s cubic-bezier(.22, 1, .36, 1) both;
+        }
+
+        .stat-card .bg-icon {
+            position: absolute;
+            right: -8px;
+            bottom: -8px;
+            font-size: 72px;
+            opacity: .04;
+            pointer-events: none;
+            transform: rotate(-15deg);
+        }
+
+        .stat-label {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: .08em;
+            color: var(--muted);
+            margin-bottom: 8px;
+        }
+
+        .stat-value {
+            font-family: var(--font-head);
+            font-size: 38px;
+            font-weight: 800;
+            line-height: 1;
+            margin-bottom: 6px;
+            background: linear-gradient(135deg, var(--teal), var(--sky));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            transition: all .4s;
+        }
+
+        .stat-value.amber {
+            background: linear-gradient(135deg, var(--amber), var(--rose));
+            -webkit-background-clip: text;
+            background-clip: text;
+        }
+
+        .stat-value.violet {
+            background: linear-gradient(135deg, var(--violet), var(--rose));
+            -webkit-background-clip: text;
+            background-clip: text;
+        }
+
+        .stat-value.green {
+            background: linear-gradient(135deg, var(--green), var(--teal));
+            -webkit-background-clip: text;
+            background-clip: text;
+        }
+
+        .stat-sub {
+            font-size: 12px;
+            color: var(--muted);
+        }
+
+        /* ══════════════════════════════════════════════
+   FORM CONTROLS
+══════════════════════════════════════════════ */
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 18px;
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: .07em;
+            color: var(--muted);
+            margin-bottom: 8px;
+            font-weight: 500;
+        }
+
+        select,
+        input[type=number] {
+            width: 100%;
+            background: var(--bg3);
+            border: 1.5px solid var(--border);
+            color: var(--text);
+            padding: 10px 14px;
+            border-radius: var(--r2);
+            font-family: var(--font-body);
+            font-size: 13px;
+            outline: none;
+            transition: border-color .2s, box-shadow .2s;
+            cursor: pointer;
+            appearance: none;
+        }
+
+        select:focus,
+        input[type=number]:focus {
+            border-color: var(--teal);
+            box-shadow: 0 0 0 3px rgba(0, 229, 204, .1);
+        }
+
+        select {
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%234a6080'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 14px center;
+            padding-right: 36px;
+        }
+
+        /* Range slider */
+        .range-wrap {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .range-val {
+            font-family: var(--font-mono);
+            color: var(--teal);
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        input[type=range] {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 4px;
+            background: var(--border2);
+            border-radius: 99px;
+            outline: none;
+            cursor: pointer;
+        }
+
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: var(--teal);
+            border: 3px solid var(--bg);
+            cursor: pointer;
+            box-shadow: 0 0 8px rgba(0, 229, 204, .5);
+            transition: transform .2s;
+        }
+
+        input[type=range]::-webkit-slider-thumb:hover {
+            transform: scale(1.2);
+        }
+
+        /* Food chips */
+        .chips-wrap {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 4px;
+        }
+
+        .chip {
+            padding: 7px 14px;
+            border-radius: 99px;
+            border: 1.5px solid var(--border);
+            background: var(--bg3);
+            color: var(--muted);
+            font-size: 12px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all .2s;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            user-select: none;
+        }
+
+        .chip:hover {
+            border-color: var(--teal);
+            color: var(--text);
+        }
+
+        .chip.active {
+            border-color: var(--teal);
+            background: rgba(0, 229, 204, .08);
+            color: var(--teal);
+            box-shadow: 0 0 12px rgba(0, 229, 204, .12);
+        }
+
+        /* Predict button */
+        .btn-predict {
+            width: 100%;
+            padding: 16px;
+            border: none;
+            border-radius: var(--r2);
+            background: linear-gradient(135deg, var(--teal), #00a8d4);
+            color: #04080f;
+            font-family: var(--font-head);
+            font-size: 15px;
+            font-weight: 700;
+            cursor: pointer;
+            letter-spacing: .04em;
+            transition: all .25s;
+            position: relative;
+            overflow: hidden;
+            margin-top: 8px;
+        }
+
+        .btn-predict::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(135deg, rgba(255, 255, 255, .15), transparent);
+            opacity: 0;
+            transition: opacity .2s;
+        }
+
+        .btn-predict:hover::before {
+            opacity: 1;
+        }
+
+        .btn-predict:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 32px rgba(0, 229, 204, .3);
+        }
+
+        .btn-predict:active {
+            transform: translateY(0);
+        }
+
+        .btn-predict.loading {
+            pointer-events: none;
+            opacity: .8;
+        }
+
+        /* Spinner */
+        .spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(0, 0, 0, .3);
+            border-top-color: #04080f;
+            border-radius: 50%;
+            animation: spin .65s linear infinite;
+            vertical-align: middle;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* ══════════════════════════════════════════════
+   SECTION HEADERS
+══════════════════════════════════════════════ */
+        .section-header {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            margin-bottom: 24px;
+        }
+
+        .section-header h2 {
+            font-family: var(--font-head);
+            font-size: 22px;
+            font-weight: 800;
+            letter-spacing: -.3px;
+        }
+
+        .section-header .tag {
+            padding: 4px 12px;
+            border-radius: 99px;
+            background: rgba(0, 229, 204, .08);
+            border: 1px solid rgba(0, 229, 204, .2);
+            color: var(--teal);
+            font-size: 11px;
+            font-weight: 600;
+            letter-spacing: .05em;
+            text-transform: uppercase;
+        }
+
+        /* ══════════════════════════════════════════════
+   PROGRESS BARS
+══════════════════════════════════════════════ */
+        .progress-bar {
+            height: 6px;
+            background: var(--border);
+            border-radius: 99px;
+            overflow: hidden;
+            margin: 5px 0;
+        }
+
+        .progress-fill {
+            height: 100%;
+            border-radius: 99px;
+            transition: width 1s cubic-bezier(.4, 0, .2, 1);
+            background: linear-gradient(90deg, var(--teal), var(--sky));
+        }
+
+        /* ══════════════════════════════════════════════
+   ITEMS RANK LIST
+══════════════════════════════════════════════ */
+        .rank-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 12px;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all .2s;
+            border: 1px solid transparent;
+        }
+
+        .rank-item:hover {
+            background: rgba(255, 255, 255, .02);
+            border-color: var(--border);
+        }
+
+        .rank-item.top {
+            background: rgba(0, 229, 204, .04);
+            border-color: rgba(0, 229, 204, .15);
+        }
+
+        .rank-num {
+            font-family: var(--font-mono);
+            font-size: 11px;
+            color: var(--muted);
+            width: 18px;
+            text-align: right;
+        }
+
+        .rank-emoji {
+            font-size: 20px;
+        }
+
+        .rank-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .rank-name {
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text);
+        }
+
+        .rank-sub {
+            font-size: 11px;
+            color: var(--muted);
+        }
+
+        .rank-val {
+            font-family: var(--font-mono);
+            font-weight: 600;
+            font-size: 15px;
+            color: var(--teal);
+        }
+
+        /* ══════════════════════════════════════════════
+   WEEK TABLE
+══════════════════════════════════════════════ */
+        .week-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+
+        .week-table th {
+            padding: 10px 16px;
+            text-align: left;
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: .08em;
+            color: var(--muted);
+            font-weight: 500;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .week-table td {
+            padding: 13px 16px;
+            border-bottom: 1px solid rgba(17, 34, 64, .6);
+        }
+
+        .week-table tr.today-row td {
+            background: rgba(0, 229, 204, .03);
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 99px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        .badge-green {
+            background: rgba(52, 211, 153, .1);
+            color: var(--green);
+        }
+
+        .badge-amber {
+            background: rgba(255, 179, 71, .1);
+            color: var(--amber);
+        }
+
+        .badge-rose {
+            background: rgba(255, 107, 138, .1);
+            color: var(--rose);
+        }
+
+        /* ══════════════════════════════════════════════
+   ALGORITHM PIPELINE
+══════════════════════════════════════════════ */
+        .pipeline {
+            display: flex;
+            align-items: stretch;
+            gap: 0;
+            flex-wrap: wrap;
+            row-gap: 12px;
+        }
+
+        .pipe-step {
+            flex: 1;
+            min-width: 140px;
+            background: var(--bg3);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 16px;
+            text-align: center;
+            position: relative;
+            transition: all .25s;
+        }
+
+        .pipe-step:hover {
+            border-color: var(--teal);
+            transform: translateY(-3px);
+            box-shadow: 0 8px 24px rgba(0, 229, 204, .1);
+        }
+
+        .pipe-step::after {
+            content: '→';
+            position: absolute;
+            right: -14px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--muted2);
+            font-size: 16px;
+            z-index: 1;
+        }
+
+        .pipe-step:last-child::after {
+            display: none;
+        }
+
+        .pipe-icon {
+            font-size: 26px;
+            margin-bottom: 8px;
+        }
+
+        .pipe-title {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text);
+            margin-bottom: 4px;
+        }
+
+        .pipe-desc {
+            font-size: 10px;
+            color: var(--muted);
+            line-height: 1.5;
+        }
+
+        /* ══════════════════════════════════════════════
+   FORMULA CODE BLOCK
+══════════════════════════════════════════════ */
+        .formula {
+            background: #020509;
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 24px 28px;
+            font-family: var(--font-mono);
+            font-size: 14px;
+            line-height: 2.2;
+            overflow-x: auto;
+        }
+
+        .f-var {
+            color: var(--teal);
+        }
+
+        .f-op {
+            color: var(--muted);
+        }
+
+        .f-label {
+            color: var(--violet);
+        }
+
+        .f-factor {
+            color: var(--amber);
+        }
+
+        .f-note {
+            color: var(--green);
+        }
+
+        /* ══════════════════════════════════════════════
+   TOAST NOTIFICATION
+══════════════════════════════════════════════ */
+        .toast {
+            position: fixed;
+            bottom: 28px;
+            right: 28px;
+            z-index: 999;
+            background: var(--bg3);
+            border: 1px solid var(--border2);
+            border-radius: 12px;
+            padding: 14px 20px;
+            font-size: 13px;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            box-shadow: 0 12px 40px rgba(0, 0, 0, .5);
+            transform: translateY(20px);
+            opacity: 0;
+            transition: all .3s cubic-bezier(.22, 1, .36, 1);
+            pointer-events: none;
+        }
+
+        .toast.show {
+            transform: none;
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .toast.success {
+            border-color: rgba(52, 211, 153, .4);
+        }
+
+        .toast.error {
+            border-color: rgba(255, 107, 138, .4);
+        }
+
+        /* ══════════════════════════════════════════════
+   CHART CONTAINERS
+══════════════════════════════════════════════ */
+        .chart-wrap {
+            position: relative;
+            width: 100%;
+        }
+
+        .chart-wrap canvas {
+            max-height: 300px;
+        }
+
+        /* ══════════════════════════════════════════════
+   SUPABASE CONFIG MODAL
+══════════════════════════════════════════════ */
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 200;
+            background: rgba(4, 8, 15, .9);
+            backdrop-filter: blur(8px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            animation: fadeIn .2s ease;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0
+            }
+
+            to {
+                opacity: 1
+            }
+        }
+
+        .modal {
+            background: var(--bg2);
+            border: 1px solid var(--border2);
+            border-radius: 20px;
+            padding: 36px;
+            width: 100%;
+            max-width: 520px;
+            animation: slideUp .3s cubic-bezier(.22, 1, .36, 1);
+        }
+
+        /* ══════════════════════════════════════════════
+   FOOD PHOTO DRAWER
+══════════════════════════════════════════════ */
+        .drawer-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 180;
+            background: rgba(4, 8, 15, .55);
+            backdrop-filter: blur(6px);
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity .25s ease;
+        }
+
+        .drawer-overlay.show {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .food-drawer {
+            position: fixed;
+            top: 0;
+            right: 0;
+            height: 100vh;
+            width: min(420px, 92vw);
+            z-index: 190;
+            background: rgba(8, 15, 26, 0.85);
+            border-left: 1px solid var(--border);
+            backdrop-filter: blur(16px);
+            transform: translateX(110%);
+            transition: transform .45s cubic-bezier(.22, 1, .36, 1);
+            box-shadow: -20px 0 60px rgba(0, 0, 0, .45);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .food-drawer.open {
+            transform: translateX(0);
+        }
+
+        .drawer-header {
+            padding: 18px 18px 12px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            border-bottom: 1px solid rgba(17, 34, 64, .65);
+        }
+
+        .drawer-title {
+            min-width: 0;
+        }
+
+        .drawer-title h3 {
+            font-family: var(--font-head);
+            font-size: 16px;
+            font-weight: 800;
+            letter-spacing: -.2px;
+            line-height: 1.2;
+            margin: 0;
+        }
+
+        .drawer-title p {
+            margin: 4px 0 0;
+            font-size: 12px;
+            color: var(--muted);
+            font-family: var(--font-mono);
+        }
+
+        .drawer-close {
+            border: 1px solid var(--border);
+            background: rgba(12, 22, 40, .8);
+            color: var(--text);
+            border-radius: 12px;
+            width: 38px;
+            height: 38px;
+            cursor: pointer;
+            display: grid;
+            place-items: center;
+            transition: transform .2s, border-color .2s;
+            flex: 0 0 auto;
+        }
+
+        .drawer-close:hover {
+            transform: translateY(-1px);
+            border-color: var(--teal);
+        }
+
+        .drawer-body {
+            padding: 16px 18px 20px;
+            overflow: auto;
+            flex: 1;
+        }
+
+        .drawer-photo {
+            width: 100%;
+            aspect-ratio: 4 / 3;
+            border-radius: 16px;
+            border: 1px solid rgba(26, 53, 96, .9);
+            overflow: hidden;
+            background: linear-gradient(135deg, rgba(0, 229, 204, .08), rgba(167, 139, 250, .08));
+            position: relative;
+        }
+
+        .drawer-photo img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+            transform: scale(1.03);
+            opacity: 0;
+            transition: opacity .35s ease;
+        }
+
+        .food-drawer.open .drawer-photo img {
+            opacity: 1;
+        }
+
+        .drawer-hint {
+            margin-top: 12px;
+            font-size: 12px;
+            color: var(--muted);
+        }
+
+        @keyframes slideUp {
+            from {
+                transform: translateY(30px);
+                opacity: 0
+            }
+
+            to {
+                transform: none;
+                opacity: 1
+            }
+        }
+
+        .modal h3 {
+            font-family: var(--font-head);
+            font-size: 20px;
+            font-weight: 800;
+            margin-bottom: 6px;
+        }
+
+        .modal p {
+            color: var(--muted);
+            font-size: 13px;
+            margin-bottom: 24px;
+            line-height: 1.6;
+        }
+
+        .modal input {
+            width: 100%;
+            background: var(--bg3);
+            border: 1.5px solid var(--border);
+            color: var(--text);
+            padding: 12px 16px;
+            border-radius: var(--r2);
+            font-family: var(--font-mono);
+            font-size: 12px;
+            outline: none;
+            transition: border-color .2s;
+            margin-bottom: 12px;
+        }
+
+        .modal input:focus {
+            border-color: var(--teal);
+        }
+
+        .modal input::placeholder {
+            color: var(--muted2);
+        }
+
+        .modal-btns {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .btn-modal {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: var(--r2);
+            font-family: var(--font-body);
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all .2s;
+        }
+
+        .btn-modal.primary {
+            background: var(--teal);
+            color: #04080f;
+        }
+
+        .btn-modal.primary:hover {
+            opacity: .9;
+            transform: translateY(-1px);
+        }
+
+        .btn-modal.secondary {
+            background: var(--bg3);
+            color: var(--muted);
+            border: 1px solid var(--border);
+        }
+
+        .btn-modal.secondary:hover {
+            color: var(--text);
+            border-color: var(--border2);
+        }
+
+        /* ══════════════════════════════════════════════
+   HISTORY TABLE
+══════════════════════════════════════════════ */
+        .history-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12px;
+        }
+
+        .history-table th {
+            padding: 8px 14px;
+            text-align: left;
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: .07em;
+            color: var(--muted);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .history-table td {
+            padding: 11px 14px;
+            border-bottom: 1px solid rgba(17, 34, 64, .5);
+            color: var(--text);
+        }
+
+        .history-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .history-table tr:hover td {
+            background: rgba(255, 255, 255, .01);
+        }
+
+        /* ══════════════════════════════════════════════
+   RESPONSIVE
+══════════════════════════════════════════════ */
+        @media (max-width: 768px) {
+
+            .grid-3,
+            .grid-2 {
+                grid-template-columns: 1fr;
+            }
+
+            header {
+                padding: 0 16px;
+            }
+
+            main {
+                padding: 20px 16px 40px;
+            }
+
+            .logo-text {
+                display: none;
+            }
+        }
+
+        /* ══════════════════════════════════════════════
+   STAGGER ANIMATION HELPERS
+══════════════════════════════════════════════ */
+        .anim-1 {
+            animation-delay: .05s;
+        }
+
+        .anim-2 {
+            animation-delay: .1s;
+        }
+
+        .anim-3 {
+            animation-delay: .15s;
+        }
+
+        .anim-4 {
+            animation-delay: .2s;
+        }
+
+        .anim-5 {
+            animation-delay: .25s;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="grid-bg"></div>
+    <div class="orb orb1"></div>
+    <div class="orb orb2"></div>
+
+    <!-- ════════════════════════════════════════════
+     SUPABASE CONFIG MODAL
+════════════════════════════════════════════ -->
+    <div class="modal-overlay" id="configModal">
+        <div class="modal">
+            <div style="font-size:32px;margin-bottom:10px;color:var(--teal);"><i data-lucide="plug-2"
+                    style="width:32px;height:32px;"></i></div>
+            <h3>Connect to Supabase</h3>
+            <p>Enter your Supabase project credentials to enable live data persistence. Predictions will be saved and
+                loaded from your database.</p>
+            <label
+                style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;display:block;margin-bottom:6px;">Project
+                URL</label>
+            <input type="text" id="sbUrl" placeholder="https://xyzabcde.supabase.co" />
+            <label
+                style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;display:block;margin-bottom:6px;">Anon
+                Key</label>
+            <input type="text" id="sbKey" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." />
+            <div
+                style="background:rgba(0,229,204,.06);border:1px solid rgba(0,229,204,.15);border-radius:10px;padding:12px 16px;margin-top:4px;font-size:12px;color:var(--muted);line-height:1.6;">
+                <strong style="color:var(--teal);">SQL to run in Supabase:</strong><br>
+                <code style="font-family:var(--font-mono);font-size:11px;color:var(--text);">
+        CREATE TABLE predictions (<br>
+        &nbsp;&nbsp;id bigserial PRIMARY KEY,<br>
+        &nbsp;&nbsp;created_at timestamptz DEFAULT now(),<br>
+        &nbsp;&nbsp;item text, day text, meal text,<br>
+        &nbsp;&nbsp;weather text, event_type text,<br>
+        &nbsp;&nbsp;students int, predicted int,<br>
+        &nbsp;&nbsp;confidence int, low int, high int<br>
+        );
+      </code>
+            </div>
+            <div class="modal-btns">
+                <button class="btn-modal secondary" onclick="skipSupabase()">Skip (Demo Mode)</button>
+                <button class="btn-modal primary" onclick="connectSupabase()">Connect →</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ════════════════════════════════════════════
+     MAIN APP
+════════════════════════════════════════════ -->
+    <div id="app">
+        <!-- HEADER -->
+        <header>
+            <div class="logo">
+                <div class="logo-icon"><i data-lucide="utensils" style="width:20px;height:20px;color:var(--bg);"></i>
+                </div>
+                <span class="logo-text">SmartCanteen<span>AI</span></span>
+            </div>
+            <nav>
+                <button class="nav-btn active" onclick="switchTab('predict',this)">Predict</button>
+                <button class="nav-btn" onclick="switchTab('analysis',this)">Analysis</button>
+                <button class="nav-btn" onclick="switchTab('weekly',this)">Weekly</button>
+                <button class="nav-btn" onclick="switchTab('history',this)">History</button>
+                <button class="nav-btn" onclick="switchTab('algorithm',this)">Algorithm</button>
+            </nav>
+            <div class="db-status">
+                <div class="dot" id="dbDot"></div>
+                <span id="dbLabel">Connecting…</span>
+            </div>
+        </header>
+
+        <main>
+
+            <!-- ══════════════════════════════════════
+         TAB: PREDICT
+    ══════════════════════════════════════ -->
+            <div class="tab-panel active" id="tab-predict">
+                <div class="section-header">
+                    <h2>Demand Prediction</h2>
+                    <span class="tag">AI Powered</span>
+                </div>
+
+                <!-- Controls Card -->
+                <div class="card" style="margin-bottom:20px;">
+                    <div class="card-title"><span class="dot-accent"></span>Parameters</div>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>Day of Week</label>
+                            <select id="selDay">
+                                <option value="0">Monday</option>
+                                <option value="1">Tuesday</option>
+                                <option value="2">Wednesday</option>
+                                <option value="3">Thursday</option>
+                                <option value="4">Friday</option>
+                                <option value="5">Saturday</option>
+                                <option value="6">Sunday</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Meal Time</label>
+                            <select id="selMeal">
+                                <option value="0">Breakfast (7–9 AM)</option>
+                                <option value="1" selected>Lunch (12–2 PM)</option>
+                                <option value="2">Snack (4–5 PM)</option>
+                                <option value="3">Dinner (7–9 PM)</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Weather</label>
+                            <select id="selWeather">
+                                <option value="0">Sunny</option>
+                                <option value="1">Cloudy</option>
+                                <option value="2">Rainy</option>
+                                <option value="3">Hot</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Special Event</label>
+                            <select id="selEvent">
+                                <option value="0">None</option>
+                                <option value="1">Sports Day</option>
+                                <option value="2">Exam Week</option>
+                                <option value="3">Festival</option>
+                                <option value="4">Holiday</option>
+                                <option value="5">Guest Lecture</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Students: <span class="range-val" id="studentsVal">200</span></label>
+                            <div class="range-wrap">
+                                <input type="range" id="rangeStudents" min="50" max="800" step="10" value="200"
+                                    oninput="document.getElementById('studentsVal').textContent=this.value" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="margin-bottom:14px;">
+                        <label
+                            style="font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);display:block;margin-bottom:10px;font-weight:500;">Food
+                            Item</label>
+                        <div class="chips-wrap" id="chipsWrap"></div>
+                    </div>
+
+                    <button class="btn-predict" id="predictBtn" onclick="runPrediction()">
+                        <i data-lucide="sparkles"
+                            style="width:16px;height:16px;vertical-align:middle;margin-right:6px;"></i> Run Prediction
+                    </button>
+                </div>
+
+                <!-- Stat Cards -->
+                <div class="grid-3" id="statCards" style="margin-bottom:20px;">
+                    <div class="stat-card anim-1">
+                        <div class="bg-icon"><i data-lucide="target"></i></div>
+                        <div class="stat-label">Predicted Demand</div>
+                        <div class="stat-value" id="statPredicted">—</div>
+                        <div class="stat-sub">portions needed</div>
+                    </div>
+                    <div class="stat-card anim-2">
+                        <div class="bg-icon"><i data-lucide="bar-chart-3"></i></div>
+                        <div class="stat-label">Confidence Range</div>
+                        <div class="stat-value amber" id="statRange">—</div>
+                        <div class="stat-sub">±12% prediction band</div>
+                    </div>
+                    <div class="stat-card anim-3">
+                        <div class="bg-icon"><i data-lucide="check-circle-2"></i></div>
+                        <div class="stat-label">Model Confidence</div>
+                        <div class="stat-value green" id="statConf">—</div>
+                        <div class="stat-sub">accuracy score</div>
+                    </div>
+                </div>
+
+                <!-- Factor Importance + All Items -->
+                <div class="grid-2" id="resultSection" style="display:none;">
+                    <!-- Factor chart -->
+                    <div class="card">
+                        <div class="card-title"><span class="dot-accent"></span>Feature Importance</div>
+                        <div class="chart-wrap"><canvas id="factorChart"></canvas></div>
+                    </div>
+                    <!-- All items today -->
+                    <div class="card">
+                        <div class="card-title"><span class="dot-accent"></span>All Items Today</div>
+                        <div id="rankList"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ══════════════════════════════════════
+         TAB: ANALYSIS
+    ══════════════════════════════════════ -->
+            <div class="tab-panel" id="tab-analysis">
+                <div class="section-header">
+                    <h2>Deep Analysis</h2>
+                    <span class="tag">Charts & Insights</span>
+                </div>
+
+                <!-- Top row charts -->
+                <div class="grid-2" style="margin-bottom:20px;">
+                    <div class="card">
+                        <div class="card-title"><span class="dot-accent"></span>Demand by Food Category (Pie)</div>
+                        <div class="chart-wrap" style="max-width:300px;margin:0 auto;"><canvas
+                                id="pieCategory"></canvas></div>
+                    </div>
+                    <div class="card">
+                        <div class="card-title"><span class="dot-accent"></span>Meal Time Distribution (Doughnut)</div>
+                        <div class="chart-wrap" style="max-width:300px;margin:0 auto;"><canvas
+                                id="doughnutMeal"></canvas></div>
+                    </div>
+                </div>
+
+                <!-- Bar charts -->
+                <div class="grid-2" style="margin-bottom:20px;">
+                    <div class="card">
+                        <div class="card-title"><span class="dot-accent"></span>Weekly Demand Trend (Bar)</div>
+                        <div class="chart-wrap"><canvas id="barWeek"></canvas></div>
+                    </div>
+                    <div class="card">
+                        <div class="card-title"><span class="dot-accent"></span>Event Impact on Demand (Bar)</div>
+                        <div class="chart-wrap"><canvas id="barEvent"></canvas></div>
+                    </div>
+                </div>
+
+                <!-- Radar + Line -->
+                <div class="grid-2" style="margin-bottom:20px;">
+                    <div class="card">
+                        <div class="card-title"><span class="dot-accent"></span>Weather Impact Radar</div>
+                        <div class="chart-wrap" style="max-width:320px;margin:0 auto;"><canvas
+                                id="radarWeather"></canvas></div>
+                    </div>
+                    <div class="card">
+                        <div class="card-title"><span class="dot-accent"></span>Item Demand Comparison (Polar Area)
+                        </div>
+                        <div class="chart-wrap" style="max-width:320px;margin:0 auto;"><canvas id="polarItems"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Full width line -->
+                <div class="card" style="margin-bottom:20px;">
+                    <div class="card-title"><span class="dot-accent"></span>Hourly Demand Simulation (Line)</div>
+                    <div class="chart-wrap"><canvas id="lineHourly"></canvas></div>
+                </div>
+            </div>
+
+            <!-- ══════════════════════════════════════
+         TAB: WEEKLY
+    ══════════════════════════════════════ -->
+            <div class="tab-panel" id="tab-weekly">
+                <div class="section-header">
+                    <h2>7-Day Forecast</h2>
+                    <span class="tag">Selected Item</span>
+                </div>
+
+                <div class="card" style="margin-bottom:20px;">
+                    <div class="card-title"><span class="dot-accent"></span>Weekly Bar Forecast</div>
+                    <div class="chart-wrap"><canvas id="weekBarChart"></canvas></div>
+                </div>
+
+                <div class="card">
+                    <div class="card-title"><span class="dot-accent"></span>Daily Breakdown Table</div>
+                    <div style="overflow-x:auto;">
+                        <table class="week-table" id="weekTable">
+                            <thead>
+                                <tr>
+                                    <th>Day</th>
+                                    <th>Predicted</th>
+                                    <th>Low</th>
+                                    <th>High</th>
+                                    <th>Confidence</th>
+                                    <th>Δ vs Prior</th>
+                                    <th>Signal</th>
+                                </tr>
+                            </thead>
+                            <tbody id="weekTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ══════════════════════════════════════
+         TAB: HISTORY (Supabase)
+    ══════════════════════════════════════ -->
+            <div class="tab-panel" id="tab-history">
+                <div class="section-header">
+                    <h2>Prediction History</h2>
+                    <span class="tag">Supabase Live</span>
+                </div>
+
+                <div class="card" style="margin-bottom:20px;">
+                    <div class="card-title"><span class="dot-accent"></span>Saved Predictions</div>
+                    <div id="historyContent">
+                        <div style="text-align:center;padding:40px;color:var(--muted);">
+                            <div style="font-size:40px;margin-bottom:12px;color:var(--muted2);"><i
+                                    data-lucide="database" style="width:48px;height:48px;"></i></div>
+                            <div>Run a prediction first to save it to Supabase</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-title"><span class="dot-accent"></span>History Trend (Line)</div>
+                    <div class="chart-wrap"><canvas id="historyChart"></canvas></div>
+                </div>
+            </div>
+
+            <!-- ══════════════════════════════════════
+         TAB: ALGORITHM
+    ══════════════════════════════════════ -->
+            <div class="tab-panel" id="tab-algorithm">
+                <div class="section-header">
+                    <h2>Algorithm Explained</h2>
+                    <span class="tag">Interpretable AI</span>
+                </div>
+
+                <div class="card" style="margin-bottom:20px;">
+                    <div class="card-title"><span class="dot-accent"></span>Algorithm Used</div>
+                    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+                        <div style="min-width:220px;">
+                            <div style="font-family:var(--font-head);font-weight:800;font-size:16px;letter-spacing:-.2px;" id="algoName">—</div>
+                            <div style="color:var(--muted);font-size:13px;line-height:1.7;margin-top:6px;" id="algoDesc">—</div>
+                        </div>
+                        <div style="font-family:var(--font-mono);color:var(--teal);font-size:12px;background:rgba(0,229,204,.08);border:1px solid rgba(0,229,204,.2);padding:8px 12px;border-radius:12px;" id="algoType">—</div>
+                    </div>
+                </div>
+
+                <div class="card" style="margin-bottom:20px;">
+                    <div class="card-title"><span class="dot-accent"></span>Core Formula</div>
+                    <div class="formula">
+                        <span class="f-var">Demand</span> <span class="f-op">=</span>
+                        <span class="f-label">BaseDemand</span>(item) <span class="f-op">×</span>
+                        <span class="f-label">StudentScale</span><br>
+                        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="f-op">×</span>
+                        <span class="f-factor">W_day</span>(day_of_week)
+                        &nbsp;&nbsp;&nbsp;&nbsp;<span class="f-note">// 0.60 Sun → 1.20 Fri</span><br>
+                        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="f-op">×</span>
+                        <span class="f-factor">W_meal</span>(meal_time)
+                        &nbsp;&nbsp;&nbsp;&nbsp;<span class="f-note">// 0.50 Snack → 1.00 Lunch</span><br>
+                        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="f-op">×</span>
+                        <span class="f-factor">W_weather</span>(condition)
+                        &nbsp;&nbsp;&nbsp;<span class="f-note">// 0.85 Hot → 1.15 Rainy</span><br>
+                        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="f-op">×</span>
+                        <span class="f-factor">W_event</span>(special_event)
+                        &nbsp;&nbsp;&nbsp;<span class="f-note">// 0.40 Holiday → 1.40 Festival</span><br>
+                        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="f-op">×</span>
+                        <span class="f-var">ItemBias</span>(item, meal_time)
+                        &nbsp;<span class="f-note">// e.g. Idly×1.8 at Breakfast</span><br>
+                        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="f-op">×</span>
+                        <span class="f-var">ε</span>
+                        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+                        <span class="f-note">// noise ∈ [0.90, 1.10]</span>
+                    </div>
+                </div>
+
+                <div class="card" style="margin-bottom:20px;">
+                    <div class="card-title"><span class="dot-accent"></span>Prediction Pipeline</div>
+                    <div class="pipeline">
+                        <div class="pipe-step">
+                            <div class="pipe-icon"><i data-lucide="arrow-down-to-line"></i></div>
+                            <div class="pipe-title">Input</div>
+                            <div class="pipe-desc">Day, meal, weather, event, students</div>
+                        </div>
+                        <div class="pipe-step">
+                            <div class="pipe-icon"><i data-lucide="binary"></i></div>
+                            <div class="pipe-title">Encode</div>
+                            <div class="pipe-desc">Convert params to weight factors</div>
+                        </div>
+                        <div class="pipe-step">
+                            <div class="pipe-icon"><i data-lucide="layout-list"></i></div>
+                            <div class="pipe-title">Base</div>
+                            <div class="pipe-desc">Historical avg × student ratio</div>
+                        </div>
+                        <div class="pipe-step">
+                            <div class="pipe-icon"><i data-lucide="x"></i></div>
+                            <div class="pipe-title">Apply</div>
+                            <div class="pipe-desc">Multiply all feature weights</div>
+                        </div>
+                        <div class="pipe-step">
+                            <div class="pipe-icon"><i data-lucide="ruler"></i></div>
+                            <div class="pipe-title">Interval</div>
+                            <div class="pipe-desc">Compute ±12% CI band</div>
+                        </div>
+                        <div class="pipe-step">
+                            <div class="pipe-icon"><i data-lucide="save"></i></div>
+                            <div class="pipe-title">Save</div>
+                            <div class="pipe-desc">Persist to Supabase DB</div>
+                        </div>
+                        <div class="pipe-step">
+                            <div class="pipe-icon"><i data-lucide="arrow-up-from-line"></i></div>
+                            <div class="pipe-title">Output</div>
+                            <div class="pipe-desc">Demand + range + confidence</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid-2" style="margin-bottom:20px;">
+                    <div class="card">
+                        <div class="card-title"><span class="dot-accent"></span>Day-of-Week Weights Chart</div>
+                        <div class="chart-wrap"><canvas id="algoDay"></canvas></div>
+                    </div>
+                    <div class="card">
+                        <div class="card-title"><span class="dot-accent"></span>Event Multipliers</div>
+                        <div class="chart-wrap"><canvas id="algoEvent"></canvas></div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-title"><span class="dot-accent"></span>Limitations & Recommended Upgrades</div>
+                    <div class="grid-2">
+                        <div>
+                            <div style="color:var(--rose);font-weight:600;font-size:13px;margin-bottom:10px;">⚠️ Current
+                                Limitations</div>
+                            <ul style="color:var(--muted);font-size:13px;line-height:1.8;padding-left:16px;">
+                                <li>Synthetic baseline data (no real POS DB)</li>
+                                <li>Linear multiplicative model ignores complex interactions</li>
+                                <li>Weather manually input, not live-fetched</li>
+                                <li>No semester / academic calendar awareness</li>
+                                <li>Single-canteen model; no multi-branch support</li>
+                            </ul>
+                        </div>
+                        <div>
+                            <div style="color:var(--green);font-weight:600;font-size:13px;margin-bottom:10px;">🚀
+                                Recommended Upgrades</div>
+                            <ul style="color:var(--muted);font-size:13px;line-height:1.8;padding-left:16px;">
+                                <li>Integrate real POS transaction history via Supabase</li>
+                                <li>Train XGBoost / LSTM on 6+ months of live data</li>
+                                <li>Add OpenWeatherMap API auto-fetch</li>
+                                <li>Include college timetable and calendar data</li>
+                                <li>Multi-item batch predictions with priority queue</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <!-- Toast -->
+    <div class="toast" id="toast">
+        <span id="toastIcon"></span>
+        <span id="toastMsg"></span>
+    </div>
+
+    <!-- Food Photo Drawer -->
+    <div class="drawer-overlay" id="drawerOverlay" onclick="closeFoodDrawer()"></div>
+    <aside class="food-drawer" id="foodDrawer" aria-hidden="true">
+        <div class="drawer-header">
+            <div class="drawer-title">
+                <h3 id="drawerFoodName">—</h3>
+                <p id="drawerFoodMeta">—</p>
+            </div>
+            <button class="drawer-close" type="button" onclick="closeFoodDrawer()" aria-label="Close">
+                <i data-lucide="x" style="width:18px;height:18px;"></i>
+            </button>
+        </div>
+        <div class="drawer-body">
+            <div class="drawer-photo">
+                <img id="drawerFoodImg" alt="Food photo" />
+            </div>
+            <div class="drawer-hint">Tip: press <span style="font-family:var(--font-mono);color:var(--text);">Esc</span> to close.</div>
+        </div>
+    </aside>
+
+    <!-- ══════════════════════════════════════════════
+     JAVASCRIPT
+══════════════════════════════════════════════ -->
+    <script>
+        /* ────────────────────────────────────────────
+           DATA & CONSTANTS
+        ──────────────────────────────────────────── */
+        const MENU = [
+            { id: 'biryani', name: 'Veg Biryani', icon: 'bowl', cat: 'Rice', base: 80 },
+            { id: 'dosa', name: 'Masala Dosa', icon: 'spline', cat: 'South', base: 120 },
+            { id: 'samosa', name: 'Samosa', icon: 'triangle', cat: 'Snack', base: 150 },
+            { id: 'chapati', name: 'Dal Chapati', icon: 'circle-dot', cat: 'North', base: 90 },
+            { id: 'pulao', name: 'Veg Pulao', icon: 'soup', cat: 'Rice', base: 70 },
+            { id: 'idly', name: 'Idly Sambar', icon: 'disc', cat: 'South', base: 130 },
+            { id: 'noodles', name: 'Veg Noodles', icon: 'bento', cat: 'Fast', base: 85 },
+            { id: 'sandwich', name: 'Grilled Sandwich', icon: 'sandwich', cat: 'Fast', base: 95 },
+        ];
+
+        const ITEM_IMAGES = {
+            biryani: 'https://images.unsplash.com/photo-1599043513900-ed6fe01d3833?auto=format&fit=crop&w=1200&q=80',
+            dosa: 'https://images.unsplash.com/photo-1660325878618-ec0b96f2ef27?auto=format&fit=crop&w=1200&q=80',
+            samosa: 'https://images.unsplash.com/photo-1604908554086-7c2c56f1d9a1?auto=format&fit=crop&w=1200&q=80',
+            chapati: 'https://images.unsplash.com/photo-1617692850144-1d66f0ac4d1f?auto=format&fit=crop&w=1200&q=80',
+            pulao: 'https://images.unsplash.com/photo-1589302168068-964664d93dc0?auto=format&fit=crop&w=1200&q=80',
+            idly: 'https://images.unsplash.com/photo-1630383249896-424e5c9c3ac8?auto=format&fit=crop&w=1200&q=80',
+            noodles: 'https://images.unsplash.com/photo-1612929633738-8fe44f7ec841?auto=format&fit=crop&w=1200&q=80',
+            sandwich: 'https://images.unsplash.com/photo-1553909489-cd47e0907980?auto=format&fit=crop&w=1200&q=80',
+        };
+
+        const ALGO_INFO = {
+            name: 'Heuristic Multiplicative Weighting Model',
+            type: 'Rule-based scoring (interpretable)',
+            desc: 'A deterministic baseline-demand model that multiplies interpretable weights for day, meal, weather, event, student scale, and an item-specific bias (plus small random noise for simulation).'
+        };
+        const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+        const MEALS = ['Breakfast', 'Lunch', 'Snack', 'Dinner'];
+        const WEATHER = ['Sunny', 'Cloudy', 'Rainy', 'Hot'];
+        const EVENTS = ['None', 'Sports Day', 'Exam Week', 'Festival', 'Holiday', 'Guest Lecture'];
+
+        const W_DAY = [1.0, 0.95, 1.05, 1.1, 1.2, 0.7, 0.6];
+        const W_MEAL = [0.6, 1.0, 0.5, 0.85];
+        const W_WTHR = [1.0, 0.95, 1.15, 0.85];
+        const W_EVENT = [1.0, 1.3, 1.25, 1.4, 0.4, 1.2];
+        const ITEM_BIAS = {
+            biryani: { 1: 1.4, 3: 1.2 },
+            dosa: { 0: 1.5, 1: 1.1 },
+            samosa: { 2: 1.6, 0: 1.2 },
+            chapati: { 1: 1.2, 3: 1.3 },
+            pulao: { 1: 1.3, 3: 1.1 },
+            idly: { 0: 1.8, 1: 0.9 },
+            noodles: { 2: 1.4, 1: 1.1 },
+            sandwich: { 0: 1.3, 2: 1.5 },
+        };
+
+        let selectedItem = 'biryani';
+        let chartInstances = {};
+        let supabaseClient = null;
+        let demoMode = true;
+        let historyData = [];
+
+        function openFoodDrawer(itemId) {
+            const item = MENU.find(m => m.id === itemId) || { id: itemId, name: itemId, cat: '—' };
+            const overlay = document.getElementById('drawerOverlay');
+            const drawer = document.getElementById('foodDrawer');
+            const img = document.getElementById('drawerFoodImg');
+            document.getElementById('drawerFoodName').textContent = item.name;
+            document.getElementById('drawerFoodMeta').textContent = `${item.cat || '—'} • click outside to close`;
+            img.src = ITEM_IMAGES[itemId] || ITEM_IMAGES.biryani;
+
+            overlay.classList.add('show');
+            drawer.classList.add('open');
+            drawer.setAttribute('aria-hidden', 'false');
+            lucide.createIcons();
+        }
+
+        function closeFoodDrawer() {
+            const overlay = document.getElementById('drawerOverlay');
+            const drawer = document.getElementById('foodDrawer');
+            if (!overlay || !drawer) return;
+            overlay.classList.remove('show');
+            drawer.classList.remove('open');
+            drawer.setAttribute('aria-hidden', 'true');
+        }
+
+        /* ────────────────────────────────────────────
+           PREDICTION ENGINE
+        ──────────────────────────────────────────── */
+        function predict(itemId, dayIdx, mealIdx, weatherIdx, eventIdx, students = 200) {
+            const item = MENU.find(m => m.id === itemId);
+            const scale = students / 200;
+            const bias = (ITEM_BIAS[itemId] && ITEM_BIAS[itemId][mealIdx]) || 1.0;
+            const noise = 0.9 + Math.random() * 0.2;
+            const raw = item.base * scale * W_DAY[dayIdx] * W_MEAL[mealIdx] * W_WTHR[weatherIdx] * W_EVENT[eventIdx] * bias * noise;
+            const predicted = Math.round(raw);
+            const low = Math.round(raw * 0.88);
+            const high = Math.round(raw * 1.12);
+            const confidence = Math.min(96, Math.max(72, Math.round(82 + (W_EVENT[eventIdx] - 1) * 5 + noise * 5)));
+            const factors = [
+                { name: 'Meal Time', impact: Math.round(Math.abs(W_MEAL[mealIdx] - 1) * 100 + 25), color: '#ffb347' },
+                { name: 'Day of Week', impact: Math.round(Math.abs(W_DAY[dayIdx] - 1) * 100 + 20), color: '#a78bfa' },
+                { name: 'Special Event', impact: Math.round(Math.abs(W_EVENT[eventIdx] - 1) * 100 + 15), color: '#ff6b8a' },
+                { name: 'Weather', impact: Math.round(Math.abs(W_WTHR[weatherIdx] - 1) * 100 + 12), color: '#38bdf8' },
+                { name: 'Students', impact: Math.round(Math.abs(scale - 1) * 50 + 18), color: '#34d399' },
+                { name: 'Item Bias', impact: Math.round(Math.abs(bias - 1) * 100 + 10), color: '#00e5cc' },
+            ].sort((a, b) => b.impact - a.impact);
+            return { predicted, low, high, confidence, factors };
+        }
+
+        function weekForecast(itemId, mealIdx, weatherIdx, eventIdx, students) {
+            return DAYS.map((d, i) => ({ day: d, dayShort: d.slice(0, 3), ...predict(itemId, i, mealIdx, weatherIdx, eventIdx, students) }));
+        }
+
+        /* ────────────────────────────────────────────
+           CHIPS
+        ──────────────────────────────────────────── */
+        function buildChips() {
+            const wrap = document.getElementById('chipsWrap');
+            wrap.innerHTML = MENU.map(item =>
+                `<div class="chip ${item.id === selectedItem ? 'active' : ''}" onclick="selectItem('${item.id}')">
+      <i data-lucide="${item.icon}" style="width:14px;height:14px;"></i> ${item.name}
+    </div>`
+            ).join('');
+            lucide.createIcons();
+        }
+        function selectItem(id) {
+            selectedItem = id;
+            buildChips();
+            openFoodDrawer(id);
+        }
+
+        /* ────────────────────────────────────────────
+           ANIMATED COUNTER
+        ──────────────────────────────────────────── */
+        function animateCount(el, from, to, dur = 700, suffix = '') {
+            const start = performance.now();
+            function step(now) {
+                const pct = Math.min(1, (now - start) / dur);
+                const ease = 1 - Math.pow(1 - pct, 3);
+                el.textContent = Math.round(from + (to - from) * ease) + suffix;
+                if (pct < 1) requestAnimationFrame(step);
+            }
+            requestAnimationFrame(step);
+        }
+
+        /* ────────────────────────────────────────────
+           CHART HELPERS
+        ──────────────────────────────────────────── */
+        const CHART_DEFAULTS = {
+            responsive: true, maintainAspectRatio: true,
+            plugins: {
+                legend: { labels: { color: '#4a6080', font: { family: 'Outfit', size: 11 }, boxWidth: 12 } },
+                tooltip: {
+                    backgroundColor: '#0c1628', borderColor: '#1a3560', borderWidth: 1,
+                    titleColor: '#e2eaf4', bodyColor: '#4a6080',
+                    titleFont: { family: 'Syne', weight: '700', size: 13 },
+                    bodyFont: { family: 'Outfit', size: 12 }, padding: 12, cornerRadius: 10,
+                }
+            },
+            animation: { duration: 800, easing: 'easeOutQuart' }
+        };
+
+        function destroyChart(id) {
+            if (chartInstances[id]) { chartInstances[id].destroy(); delete chartInstances[id]; }
+        }
+
+        function makeChart(id, config) {
+            destroyChart(id);
+            const ctx = document.getElementById(id).getContext('2d');
+            chartInstances[id] = new Chart(ctx, config);
+            return chartInstances[id];
+        }
+
+        /* ────────────────────────────────────────────
+           MAIN PREDICTION RUN
+        ──────────────────────────────────────────── */
+        async function runPrediction() {
+            const btn = document.getElementById('predictBtn');
+            btn.classList.add('loading');
+            btn.innerHTML = '<span class="spinner"></span> Analyzing…';
+
+            await new Promise(r => setTimeout(r, 650));
+
+            const dayIdx = +document.getElementById('selDay').value;
+            const mealIdx = +document.getElementById('selMeal').value;
+            const weatherIdx = +document.getElementById('selWeather').value;
+            const eventIdx = +document.getElementById('selEvent').value;
+            const students = +document.getElementById('rangeStudents').value;
+
+            const res = predict(selectedItem, dayIdx, mealIdx, weatherIdx, eventIdx, students);
+            const week = weekForecast(selectedItem, mealIdx, weatherIdx, eventIdx, students);
+            const all = MENU.map(item => ({
+                ...item,
+                ...predict(item.id, dayIdx, mealIdx, weatherIdx, eventIdx, students)
+            })).sort((a, b) => b.predicted - a.predicted);
+
+            // Stat cards
+            animateCount(document.getElementById('statPredicted'), 0, res.predicted);
+            document.getElementById('statRange').textContent = `${res.low}–${res.high}`;
+            animateCount(document.getElementById('statConf'), 0, res.confidence, 600, '%');
+
+            // Show result section
+            document.getElementById('resultSection').style.display = 'grid';
+
+            // Feature importance bar chart
+            makeChart('factorChart', {
+                type: 'bar',
+                data: {
+                    labels: res.factors.map(f => f.name),
+                    datasets: [{
+                        label: 'Impact (%)',
+                        data: res.factors.map(f => f.impact),
+                        backgroundColor: res.factors.map(f => f.color + '99'),
+                        borderColor: res.factors.map(f => f.color),
+                        borderWidth: 2, borderRadius: 8, borderSkipped: false,
+                    }]
+                },
+                options: {
+                    ...CHART_DEFAULTS,
+                    indexAxis: 'y',
+                    plugins: { ...CHART_DEFAULTS.plugins, legend: { display: false } },
+                    scales: {
+                        x: { ticks: { color: '#4a6080' }, grid: { color: '#112240' } },
+                        y: { ticks: { color: '#e2eaf4', font: { family: 'Outfit', size: 12 } }, grid: { display: false } }
+                    }
+                }
+            });
+
+            // Rank list
+            const rl = document.getElementById('rankList');
+            const maxP = all[0].predicted;
+            rl.innerHTML = all.map((item, i) => `
+    <div class="rank-item ${i === 0 ? 'top' : ''}" onclick="selectItem('${item.id}');runPrediction()">
+      <span class="rank-num">#${i + 1}</span>
+      <span class="rank-emoji"><i data-lucide="${item.icon}" style="width:18px;height:18px;"></i></span>
+      <div class="rank-info">
+        <div class="rank-name">${item.name}</div>
+        <div class="progress-bar" style="margin-top:4px;">
+          <div class="progress-fill" style="width:${(item.predicted / maxP * 100).toFixed(1)}%;background:${i === 0 ? 'linear-gradient(90deg,var(--teal),var(--sky))' : 'linear-gradient(90deg,var(--violet),#6366f1)'}"></div>
+        </div>
+      </div>
+      <span class="rank-val">${item.predicted}</span>
+    </div>
+  `).join('');
+            lucide.createIcons();
+
+            // Weekly tab
+            updateWeekTab(week, dayIdx);
+
+            // Save to Supabase
+            await saveToSupabase({
+                item: selectedItem, day: DAYS[dayIdx], meal: MEALS[mealIdx],
+                weather: WEATHER[weatherIdx], event_type: EVENTS[eventIdx], students,
+                predicted: res.predicted, confidence: res.confidence, low: res.low, high: res.high
+            });
+
+            btn.classList.remove('loading');
+            btn.innerHTML = '🔮 Run Prediction';
+            showToast('✅', 'Prediction complete!', 'success');
+        }
+
+        /* ────────────────────────────────────────────
+           WEEK TAB
+        ──────────────────────────────────────────── */
+        function updateWeekTab(week, todayIdx) {
+            // Bar chart with error bars simulation
+            makeChart('weekBarChart', {
+                type: 'bar',
+                data: {
+                    labels: week.map(d => d.dayShort),
+                    datasets: [
+                        {
+                            label: 'Predicted',
+                            data: week.map(d => d.predicted),
+                            backgroundColor: week.map((d, i) => i === todayIdx ? 'rgba(0,229,204,0.7)' : 'rgba(167,139,250,0.5)'),
+                            borderColor: week.map((d, i) => i === todayIdx ? '#00e5cc' : '#a78bfa'),
+                            borderWidth: 2, borderRadius: 10, borderSkipped: false,
+                        },
+                        {
+                            label: 'Low',
+                            data: week.map(d => d.low),
+                            type: 'line', borderColor: 'rgba(255,107,138,0.6)', borderDash: [5, 4],
+                            pointRadius: 0, borderWidth: 1.5, fill: false, tension: .4,
+                        },
+                        {
+                            label: 'High',
+                            data: week.map(d => d.high),
+                            type: 'line', borderColor: 'rgba(52,211,153,0.6)', borderDash: [5, 4],
+                            pointRadius: 0, borderWidth: 1.5, fill: false, tension: .4,
+                        }
+                    ]
+                },
+                options: {
+                    ...CHART_DEFAULTS,
+                    scales: {
+                        x: { ticks: { color: '#4a6080' }, grid: { color: '#112240' } },
+                        y: { ticks: { color: '#4a6080' }, grid: { color: '#112240' } }
+                    }
+                }
+            });
+
+            // Table
+            const tbody = document.getElementById('weekTableBody');
+            tbody.innerHTML = week.map((d, i) => {
+                const prev = i > 0 ? week[i - 1].predicted : d.predicted;
+                const delta = d.predicted - prev;
+                const sig = delta > 5 ? '📈 Rising' : delta < -5 ? '📉 Falling' : '➡️ Stable';
+                const cls = d.confidence > 88 ? 'badge-green' : d.confidence > 80 ? 'badge-amber' : 'badge-rose';
+                return `
+      <tr class="${i === todayIdx ? 'today-row' : ''}">
+        <td style="font-weight:${i === todayIdx ? 700 : 400};color:${i === todayIdx ? 'var(--teal)' : 'var(--text)'}">
+          ${d.day}${i === todayIdx ? ' ◀' : ''}
+        </td>
+        <td style="font-family:var(--font-mono);font-weight:700;color:var(--text);font-size:15px">${d.predicted}</td>
+        <td style="color:var(--muted)">${d.low}</td>
+        <td style="color:var(--muted)">${d.high}</td>
+        <td><span class="badge ${cls}">${d.confidence}%</span></td>
+        <td style="color:${delta > 0 ? 'var(--green)' : delta < 0 ? 'var(--rose)' : 'var(--muted)'}">
+          ${delta > 0 ? '+' : ''}${i === 0 ? '—' : delta}
+        </td>
+        <td style="font-size:12px">${sig}</td>
+      </tr>`;
+            }).join('');
+        }
+
+        /* ────────────────────────────────────────────
+           ANALYSIS TAB CHARTS
+        ──────────────────────────────────────────── */
+        function buildAnalysisCharts() {
+            const TEAL = '#00e5cc', VIOLET = '#a78bfa', AMBER = '#ffb347', ROSE = '#ff6b8a',
+                GREEN = '#34d399', SKY = '#38bdf8', PINK = '#f472b6', LIME = '#a3e635';
+
+            // PIE: Category demand
+            makeChart('pieCategory', {
+                type: 'pie',
+                data: {
+                    labels: ['Rice', 'South Indian', 'Snacks', 'North Indian', 'Fast Food'],
+                    datasets: [{
+                        data: [150, 250, 150, 90, 180],
+                        backgroundColor: ['rgba(0,229,204,.75)', 'rgba(167,139,250,.75)', 'rgba(255,179,71,.75)', 'rgba(255,107,138,.75)', 'rgba(52,211,153,.75)'],
+                        borderColor: ['#00e5cc', '#a78bfa', '#ffb347', '#ff6b8a', '#34d399'],
+                        borderWidth: 2, hoverOffset: 12,
+                    }]
+                },
+                options: {
+                    ...CHART_DEFAULTS,
+                    plugins: {
+                        ...CHART_DEFAULTS.plugins,
+                        legend: { position: 'bottom', labels: { color: '#4a6080', font: { family: 'Outfit', size: 11 }, boxWidth: 12, padding: 14 } }
+                    }
+                }
+            });
+
+            // DOUGHNUT: Meal time distribution
+            makeChart('doughnutMeal', {
+                type: 'doughnut',
+                data: {
+                    labels: MEALS,
+                    datasets: [{
+                        data: [18, 40, 12, 30],
+                        backgroundColor: ['rgba(56,189,248,.7)', 'rgba(0,229,204,.7)', 'rgba(255,179,71,.7)', 'rgba(167,139,250,.7)'],
+                        borderColor: ['#38bdf8', '#00e5cc', '#ffb347', '#a78bfa'],
+                        borderWidth: 2, hoverOffset: 10,
+                    }]
+                },
+                options: {
+                    ...CHART_DEFAULTS, cutout: '62%',
+                    plugins: {
+                        ...CHART_DEFAULTS.plugins,
+                        legend: { position: 'bottom', labels: { color: '#4a6080', font: { family: 'Outfit', size: 11 }, boxWidth: 12, padding: 14 } }
+                    }
+                }
+            });
+
+            // BAR: Weekly trend all items
+            makeChart('barWeek', {
+                type: 'bar',
+                data: {
+                    labels: DAYS.map(d => d.slice(0, 3)),
+                    datasets: MENU.slice(0, 4).map((item, i) => ({
+                        label: item.name,
+                        data: DAYS.map((_, di) => Math.round(item.base * W_DAY[di] * (0.9 + Math.random() * .2))),
+                        backgroundColor: ['rgba(0,229,204,.6)', 'rgba(167,139,250,.6)', 'rgba(255,179,71,.6)', 'rgba(255,107,138,.6)'][i],
+                        borderRadius: 6, borderSkipped: false,
+                    }))
+                },
+                options: {
+                    ...CHART_DEFAULTS,
+                    scales: {
+                        x: { stacked: false, ticks: { color: '#4a6080' }, grid: { color: '#112240' } },
+                        y: { ticks: { color: '#4a6080' }, grid: { color: '#112240' } }
+                    }
+                }
+            });
+
+            // BAR: Event impact
+            makeChart('barEvent', {
+                type: 'bar',
+                data: {
+                    labels: EVENTS,
+                    datasets: [{
+                        label: 'Demand Multiplier',
+                        data: W_EVENT.map(w => Math.round(w * 100)),
+                        backgroundColor: W_EVENT.map(w => w >= 1.2 ? 'rgba(52,211,153,.7)' : w < 1 ? 'rgba(255,107,138,.7)' : 'rgba(255,179,71,.7)'),
+                        borderColor: W_EVENT.map(w => w >= 1.2 ? '#34d399' : w < 1 ? '#ff6b8a' : '#ffb347'),
+                        borderWidth: 2, borderRadius: 8, borderSkipped: false,
+                    }]
+                },
+                options: {
+                    ...CHART_DEFAULTS,
+                    plugins: { ...CHART_DEFAULTS.plugins, legend: { display: false } },
+                    scales: {
+                        x: { ticks: { color: '#4a6080', font: { size: 11 } }, grid: { display: false } },
+                        y: { ticks: { color: '#4a6080', callback: v => v + '%' }, grid: { color: '#112240' }, min: 0, max: 160 }
+                    }
+                }
+            });
+
+            // RADAR: Weather impact per item
+            makeChart('radarWeather', {
+                type: 'radar',
+                data: {
+                    labels: WEATHER,
+                    datasets: MENU.slice(0, 4).map((item, i) => ({
+                        label: item.name,
+                        data: W_WTHR.map(w => Math.round(item.base * w * (0.95 + Math.random() * .1))),
+                        borderColor: ['#00e5cc', '#a78bfa', '#ffb347', '#ff6b8a'][i],
+                        backgroundColor: ['rgba(0,229,204,.1)', 'rgba(167,139,250,.1)', 'rgba(255,179,71,.1)', 'rgba(255,107,138,.1)'][i],
+                        borderWidth: 2, pointRadius: 4,
+                        pointBackgroundColor: ['#00e5cc', '#a78bfa', '#ffb347', '#ff6b8a'][i],
+                    }))
+                },
+                options: {
+                    ...CHART_DEFAULTS,
+                    scales: {
+                        r: {
+                            ticks: { color: '#4a6080', backdropColor: 'transparent' },
+                            grid: { color: '#112240' }, pointLabels: { color: '#4a6080', font: { family: 'Outfit', size: 11 } },
+                            angleLines: { color: '#112240' }
+                        }
+                    }
+                }
+            });
+
+            // POLAR AREA: Item demand
+            makeChart('polarItems', {
+                type: 'polarArea',
+                data: {
+                    labels: MENU.map(m => m.name),
+                    datasets: [{
+                        data: MENU.map(m => m.base),
+                        backgroundColor: [
+                            'rgba(0,229,204,.6)', 'rgba(167,139,250,.6)', 'rgba(255,179,71,.6)', 'rgba(255,107,138,.6)',
+                            'rgba(52,211,153,.6)', 'rgba(56,189,248,.6)', 'rgba(244,114,182,.6)', 'rgba(163,230,53,.6)'
+                        ],
+                        borderColor: [TEAL, VIOLET, AMBER, ROSE, GREEN, SKY, PINK, LIME],
+                        borderWidth: 2,
+                    }]
+                },
+                options: {
+                    ...CHART_DEFAULTS,
+                    plugins: {
+                        ...CHART_DEFAULTS.plugins,
+                        legend: { position: 'right', labels: { color: '#4a6080', font: { family: 'Outfit', size: 10 }, boxWidth: 10, padding: 8 } }
+                    },
+                    scales: { r: { ticks: { display: false }, grid: { color: '#112240' }, angleLines: { color: '#112240' } } }
+                }
+            });
+
+            // LINE: Hourly simulation
+            const hours = Array.from({ length: 14 }, (_, i) => i + 7).map(h => `${h}:00`);
+            const hourlyBase = [20, 60, 50, 30, 15, 95, 110, 105, 85, 40, 70, 85, 90, 75];
+            makeChart('lineHourly', {
+                type: 'line',
+                data: {
+                    labels: hours,
+                    datasets: MENU.slice(0, 3).map((item, i) => {
+                        const data = hourlyBase.map(v => Math.max(0, Math.round(v * (item.base / 100) * (0.8 + Math.random() * .4))));
+                        return {
+                            label: item.name, data,
+                            borderColor: ['#00e5cc', '#a78bfa', '#ffb347'][i],
+                            backgroundColor: ['rgba(0,229,204,.08)', 'rgba(167,139,250,.08)', 'rgba(255,179,71,.08)'][i],
+                            borderWidth: 2.5, tension: .45, fill: true,
+                            pointRadius: 4, pointHoverRadius: 7,
+                            pointBackgroundColor: ['#00e5cc', '#a78bfa', '#ffb347'][i],
+                        };
+                    })
+                },
+                options: {
+                    ...CHART_DEFAULTS,
+                    scales: {
+                        x: { ticks: { color: '#4a6080', font: { size: 11 } }, grid: { color: '#112240' } },
+                        y: { ticks: { color: '#4a6080' }, grid: { color: '#112240' } }
+                    }
+                }
+            });
+        }
+
+        /* ────────────────────────────────────────────
+           ALGORITHM TAB CHARTS
+        ──────────────────────────────────────────── */
+        function buildAlgoCharts() {
+            makeChart('algoDay', {
+                type: 'bar',
+                data: {
+                    labels: DAYS,
+                    datasets: [{
+                        label: 'Weight Factor',
+                        data: W_DAY,
+                        backgroundColor: W_DAY.map(w => w > 1 ? 'rgba(52,211,153,.7)' : w < 0.8 ? 'rgba(255,107,138,.7)' : 'rgba(255,179,71,.7)'),
+                        borderColor: W_DAY.map(w => w > 1 ? '#34d399' : w < 0.8 ? '#ff6b8a' : '#ffb347'),
+                        borderWidth: 2, borderRadius: 8, borderSkipped: false,
+                    }]
+                },
+                options: {
+                    ...CHART_DEFAULTS,
+                    plugins: { ...CHART_DEFAULTS.plugins, legend: { display: false } },
+                    scales: {
+                        x: { ticks: { color: '#4a6080' }, grid: { display: false } },
+                        y: { min: 0.4, max: 1.4, ticks: { color: '#4a6080' }, grid: { color: '#112240' } }
+                    }
+                }
+            });
+
+            makeChart('algoEvent', {
+                type: 'bar',
+                data: {
+                    labels: EVENTS,
+                    datasets: [{
+                        label: 'Multiplier',
+                        data: W_EVENT,
+                        backgroundColor: W_EVENT.map(w => w >= 1.3 ? 'rgba(52,211,153,.7)' : w < 0.6 ? 'rgba(255,107,138,.7)' : 'rgba(167,139,250,.7)'),
+                        borderColor: W_EVENT.map(w => w >= 1.3 ? '#34d399' : w < 0.6 ? '#ff6b8a' : '#a78bfa'),
+                        borderWidth: 2, borderRadius: 8, borderSkipped: false,
+                    }]
+                },
+                options: {
+                    ...CHART_DEFAULTS,
+                    plugins: { ...CHART_DEFAULTS.plugins, legend: { display: false } },
+                    scales: {
+                        x: { ticks: { color: '#4a6080', font: { size: 11 } }, grid: { display: false } },
+                        y: { min: 0, max: 1.6, ticks: { color: '#4a6080' }, grid: { color: '#112240' } }
+                    }
+                }
+            });
+        }
+
+        /* ────────────────────────────────────────────
+           SUPABASE
+        ──────────────────────────────────────────── */
+        function connectSupabase() {
+            const url = document.getElementById('sbUrl').value.trim();
+            const key = document.getElementById('sbKey').value.trim();
+            if (!url || !key) { showToast('⚠️', 'Enter both URL and Key', 'error'); return; }
+
+            try {
+                supabaseClient = window.supabase.createClient(url, key);
+                demoMode = false;
+                document.getElementById('configModal').remove();
+                setDbStatus('connected');
+                showToast('🔌', 'Connected to Supabase!', 'success');
+                loadHistory();
+            } catch (e) {
+                showToast('❌', 'Invalid credentials', 'error');
+            }
+        }
+
+        function skipSupabase() {
+            demoMode = true;
+            document.getElementById('configModal').remove();
+            setDbStatus('demo');
+            showToast('ℹ️', 'Running in Demo Mode', 'success');
+        }
+
+        function setDbStatus(state) {
+            const dot = document.getElementById('dbDot');
+            const lbl = document.getElementById('dbLabel');
+            if (state === 'connected') { dot.className = 'dot connected'; lbl.textContent = 'Supabase Connected'; }
+            else if (state === 'demo') { dot.className = 'dot'; lbl.textContent = 'Demo Mode'; }
+            else { dot.className = 'dot error'; lbl.textContent = 'DB Error'; }
+        }
+
+        async function saveToSupabase(data) {
+            if (demoMode || !supabaseClient) {
+                // Demo: store in memory
+                historyData.unshift({ ...data, id: Date.now(), created_at: new Date().toISOString() });
+                renderHistory();
+                return;
+            }
+            try {
+                const { error } = await supabaseClient.from('predictions').insert([data]);
+                if (error) throw error;
+                loadHistory();
+            } catch (e) {
+                console.error('Supabase save error:', e);
+                historyData.unshift({ ...data, id: Date.now(), created_at: new Date().toISOString() });
+                renderHistory();
+            }
+        }
+
+        async function loadHistory() {
+            if (demoMode || !supabaseClient) { renderHistory(); return; }
+            try {
+                const { data, error } = await supabaseClient
+                    .from('predictions')
+                    .select('*')
+                    .order('created_at', { ascending: false })
+                    .limit(50);
+                if (error) throw error;
+                historyData = data || [];
+                renderHistory();
+            } catch (e) {
+                console.error('History load error:', e);
+            }
+        }
+
+        function renderHistory() {
+            const el = document.getElementById('historyContent');
+            el.innerHTML = `<div style="text-align:center;padding:40px;color:var(--muted)">
+      <div style="font-size:40px;margin-bottom:12px;color:var(--muted2)"><i data-lucide="database" style="width:48px;height:48px;"></i></div>
+      <div>No predictions saved yet. Run one above!</div>
+    </div>`;
+            el.innerHTML = `<div style="overflow-x:auto">
+    <table class="history-table">
+      <thead><tr>
+        <th>Time</th><th>Item</th><th>Day</th><th>Meal</th>
+        <th>Event</th><th>Students</th><th>Predicted</th><th>Conf.</th>
+      </tr></thead>
+      <tbody>
+        ${historyData.slice(0, 20).map(r => {
+                const item = MENU.find(m => m.id === r.item) || {};
+                const dt = new Date(r.created_at);
+                const time = isNaN(dt) ? '—' : dt.toLocaleString('en-IN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: 'short' });
+                return `<tr>
+            <td style="color:var(--muted);font-family:var(--font-mono);font-size:11px">${time}</td>
+            <td><i data-lucide="${item.icon || 'circle'}" style="width:14px;height:14px;vertical-align:middle;margin-right:4px;"></i> ${item.name || r.item}</td>
+            <td>${r.day}</td>
+            <td>${r.meal}</td>
+            <td><span class="badge badge-amber">${r.event_type}</span></td>
+            <td style="font-family:var(--font-mono)">${r.students}</td>
+            <td style="font-family:var(--font-mono);font-weight:700;color:var(--teal);font-size:15px">${r.predicted}</td>
+            <td><span class="badge ${r.confidence > 88 ? 'badge-green' : r.confidence > 80 ? 'badge-amber' : 'badge-rose'}">${r.confidence}%</span></td>
+          </tr>`;
+            }).join('')}
+      </tbody>
+    </table>
+  </div>`;
+            lucide.createIcons();
+
+            // History line chart
+            const recent = [...historyData].reverse().slice(-20);
+            makeChart('historyChart', {
+                type: 'line',
+                data: {
+                    labels: recent.map((_, i) => `#${i + 1}`),
+                    datasets: [{
+                        label: 'Predicted Demand',
+                        data: recent.map(r => r.predicted),
+                        borderColor: '#00e5cc', backgroundColor: 'rgba(0,229,204,.08)',
+                        borderWidth: 2.5, tension: .4, fill: true,
+                        pointRadius: 5, pointHoverRadius: 8, pointBackgroundColor: '#00e5cc',
+                        pointBorderColor: '#04080f', pointBorderWidth: 2,
+                    }]
+                },
+                options: {
+                    ...CHART_DEFAULTS,
+                    scales: {
+                        x: { ticks: { color: '#4a6080' }, grid: { color: '#112240' } },
+                        y: { ticks: { color: '#4a6080' }, grid: { color: '#112240' } }
+                    }
+                }
+            });
+        }
+
+        /* ────────────────────────────────────────────
+           TAB SWITCHING
+        ──────────────────────────────────────────── */
+        function switchTab(name, btn) {
+            document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+            document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById('tab-' + name).classList.add('active');
+            btn.classList.add('active');
+
+            if (name === 'analysis') buildAnalysisCharts();
+            if (name === 'algorithm') buildAlgoCharts();
+            if (name === 'history') loadHistory();
+        }
+
+        /* ────────────────────────────────────────────
+           TOAST
+        ──────────────────────────────────────────── */
+        function showToast(icon, msg, type = 'success') {
+            const t = document.getElementById('toast');
+            document.getElementById('toastIcon').textContent = icon;
+            document.getElementById('toastMsg').textContent = msg;
+            t.className = `toast ${type} show`;
+            setTimeout(() => t.classList.remove('show'), 3200);
+        }
+
+        /* ────────────────────────────────────────────
+           INIT
+        ──────────────────────────────────────────── */
+        buildChips();
+        lucide.createIcons();
+        setDbStatus('connecting');
+
+        document.getElementById('algoName').textContent = ALGO_INFO.name;
+        document.getElementById('algoType').textContent = ALGO_INFO.type;
+        document.getElementById('algoDesc').textContent = ALGO_INFO.desc;
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') closeFoodDrawer();
+        });
+    </script>
+</body>
+
+</html>
