@@ -25,11 +25,15 @@
    CSS VARIABLES & RESET
 ══════════════════════════════════════════════ */
         :root {
-            --bg: #04080f;
-            --bg2: #080f1a;
-            --bg3: #0c1628;
-            --border: #112240;
-            --border2: #1a3560;
+            --bg: #05070c;
+            --bg2: #0a0f18;
+            --bg3: #0e1623;
+            --bg-rgb: 5, 7, 12;
+            --surface-rgb: 10, 15, 24;
+            --border: rgba(148, 163, 184, 0.14);
+            --border2: rgba(56, 189, 248, 0.22);
+            --accent: #00e5cc;
+            --accent-rgb: 0, 229, 204;
             --teal: #00e5cc;
             --teal2: #00b8a4;
             --amber: #ffb347;
@@ -37,15 +41,16 @@
             --violet: #a78bfa;
             --green: #34d399;
             --sky: #38bdf8;
-            --text: #e2eaf4;
-            --muted: #4a6080;
-            --muted2: #2a4060;
+            --text: #e7eef9;
+            --muted: rgba(231, 238, 249, 0.58);
+            --muted2: rgba(231, 238, 249, 0.35);
             --font-head: 'Syne', sans-serif;
             --font-body: 'Outfit', sans-serif;
             --font-mono: 'DM Mono', monospace;
             --r: 16px;
             --r2: 12px;
             --shadow: 0 8px 40px rgba(0, 229, 204, 0.06);
+            --theme-t: .35s;
         }
 
         *,
@@ -57,6 +62,7 @@
         }
 
         html {
+            color-scheme: dark;
             scroll-behavior: smooth;
         }
 
@@ -68,6 +74,27 @@
             line-height: 1.6;
             min-height: 100vh;
             overflow-x: hidden;
+        }
+
+        body,
+        header,
+        .card,
+        .stat-card,
+        .nav-btn,
+        .chip,
+        .btn-predict,
+        select,
+        input[type=number],
+        input[type=range],
+        .pipe-step,
+        .toast,
+        .food-drawer,
+        .drawer-close {
+            transition:
+                background-color var(--theme-t) ease,
+                border-color var(--theme-t) ease,
+                color var(--theme-t) ease,
+                box-shadow var(--theme-t) ease;
         }
 
         /* Scrollbar */
@@ -161,7 +188,7 @@
             position: sticky;
             top: 0;
             z-index: 100;
-            background: rgba(4, 8, 15, 0.85);
+            background: rgba(var(--surface-rgb), 0.88);
             backdrop-filter: blur(20px);
             border-bottom: 1px solid var(--border);
             padding: 0 32px;
@@ -209,8 +236,8 @@
             background: transparent;
             color: var(--muted);
             font-family: var(--font-body);
-            font-size: 13px;
-            font-weight: 500;
+            font-size: 14px;
+            font-weight: 700;
             cursor: pointer;
             transition: all .2s;
             position: relative;
@@ -253,6 +280,36 @@
             font-size: 12px;
             font-family: var(--font-mono);
             color: var(--muted);
+        }
+
+        .theme-select {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 6px 10px;
+            border-radius: 10px;
+            border: 1px solid var(--border);
+            background: rgba(var(--bg-rgb), 0.08);
+        }
+
+        .theme-select label {
+            font-size: 11px;
+            letter-spacing: .08em;
+            text-transform: uppercase;
+            color: var(--muted);
+            font-weight: 600;
+            line-height: 1;
+        }
+
+        .theme-select select {
+            width: 132px;
+            padding: 7px 10px;
+            border-radius: 10px;
+            font-size: 13px;
+            font-weight: 700;
+            border: 1px solid var(--border);
+            background: rgba(var(--surface-rgb), 0.55);
+            color: var(--text);
         }
 
         .dot {
@@ -354,8 +411,8 @@
 
         .card-title {
             font-family: var(--font-head);
-            font-weight: 700;
-            font-size: 13px;
+            font-weight: 800;
+            font-size: 14px;
             text-transform: uppercase;
             letter-spacing: .1em;
             color: var(--muted);
@@ -471,12 +528,12 @@
 
         .form-group label {
             display: block;
-            font-size: 11px;
+            font-size: 12px;
             text-transform: uppercase;
             letter-spacing: .07em;
             color: var(--muted);
             margin-bottom: 8px;
-            font-weight: 500;
+            font-weight: 700;
         }
 
         select,
@@ -488,10 +545,13 @@
             padding: 10px 14px;
             border-radius: var(--r2);
             font-family: var(--font-body);
-            font-size: 13px;
+            font-size: 14px;
+            font-weight: 600;
             outline: none;
             transition: border-color .2s, box-shadow .2s;
             cursor: pointer;
+            -webkit-appearance: none;
+            -moz-appearance: none;
             appearance: none;
         }
 
@@ -524,6 +584,8 @@
 
         input[type=range] {
             -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
             width: 100%;
             height: 4px;
             background: var(--border2);
@@ -562,8 +624,8 @@
             border: 1.5px solid var(--border);
             background: var(--bg3);
             color: var(--muted);
-            font-size: 12px;
-            font-weight: 500;
+            font-size: 13px;
+            font-weight: 700;
             cursor: pointer;
             transition: all .2s;
             display: flex;
@@ -594,7 +656,7 @@
             color: #04080f;
             font-family: var(--font-head);
             font-size: 15px;
-            font-weight: 700;
+            font-weight: 800;
             cursor: pointer;
             letter-spacing: .04em;
             transition: all .25s;
@@ -760,17 +822,17 @@
         .week-table {
             width: 100%;
             border-collapse: collapse;
-            font-size: 13px;
+            font-size: 14px;
         }
 
         .week-table th {
             padding: 10px 16px;
             text-align: left;
-            font-size: 10px;
+            font-size: 12px;
             text-transform: uppercase;
             letter-spacing: .08em;
             color: var(--muted);
-            font-weight: 500;
+            font-weight: 800;
             border-bottom: 1px solid var(--border);
         }
 
@@ -787,8 +849,8 @@
             display: inline-block;
             padding: 3px 10px;
             border-radius: 99px;
-            font-size: 11px;
-            font-weight: 600;
+            font-size: 12px;
+            font-weight: 800;
         }
 
         .badge-green {
@@ -1013,7 +1075,7 @@
             height: 100vh;
             width: min(420px, 92vw);
             z-index: 190;
-            background: rgba(8, 15, 26, 0.85);
+            background: rgba(var(--surface-rgb), 0.96);
             border-left: 1px solid var(--border);
             backdrop-filter: blur(16px);
             transform: translateX(110%);
@@ -1042,8 +1104,8 @@
 
         .drawer-title h3 {
             font-family: var(--font-head);
-            font-size: 16px;
-            font-weight: 800;
+            font-size: 18px;
+            font-weight: 900;
             letter-spacing: -.2px;
             line-height: 1.2;
             margin: 0;
@@ -1051,9 +1113,10 @@
 
         .drawer-title p {
             margin: 4px 0 0;
-            font-size: 12px;
+            font-size: 13px;
             color: var(--muted);
             font-family: var(--font-mono);
+            font-weight: 700;
         }
 
         .drawer-close {
@@ -1079,6 +1142,70 @@
             padding: 16px 18px 20px;
             overflow: auto;
             flex: 1;
+        }
+
+        .nutri-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin-top: 14px;
+        }
+
+        .nutri-card {
+            background: rgba(var(--surface-rgb), 0.55);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 10px 12px;
+        }
+
+        .nutri-label {
+            font-size: 12px;
+            letter-spacing: .08em;
+            text-transform: uppercase;
+            color: var(--muted);
+            font-weight: 800;
+            margin-bottom: 2px;
+        }
+
+        .nutri-val {
+            font-family: var(--font-mono);
+            font-weight: 900;
+            font-size: 15px;
+            color: var(--text);
+        }
+
+        .drawer-section {
+            margin-top: 16px;
+        }
+
+        .drawer-section-title {
+            font-family: var(--font-head);
+            font-size: 14px;
+            font-weight: 900;
+            letter-spacing: .02em;
+            margin-bottom: 8px;
+            color: var(--text);
+        }
+
+        .drawer-list {
+            padding-left: 16px;
+            color: var(--muted);
+            font-size: 14px;
+            line-height: 1.8;
+            font-weight: 700;
+        }
+
+        .reveal {
+            opacity: 0;
+            transform: translateY(10px);
+            filter: blur(2px);
+            transition: opacity .28s cubic-bezier(.22, 1, .36, 1), transform .28s cubic-bezier(.22, 1, .36, 1), filter .28s cubic-bezier(.22, 1, .36, 1);
+        }
+
+        .reveal.show {
+            opacity: 1;
+            transform: none;
+            filter: blur(0);
         }
 
         .drawer-photo {
@@ -1204,23 +1331,39 @@
         .history-table {
             width: 100%;
             border-collapse: collapse;
-            font-size: 12px;
+            font-size: 13px;
         }
 
         .history-table th {
             padding: 8px 14px;
             text-align: left;
-            font-size: 10px;
+            font-size: 11px;
             text-transform: uppercase;
             letter-spacing: .07em;
             color: var(--muted);
+            font-weight: 800;
             border-bottom: 1px solid var(--border);
         }
 
         .history-table td {
-            padding: 11px 14px;
-            border-bottom: 1px solid rgba(17, 34, 64, .5);
+            padding: 12px 14px;
+            border-bottom: 1px solid rgba(17, 34, 64, .6);
             color: var(--text);
+        }
+
+        #algoName {
+            font-size: 18px;
+            font-weight: 900;
+        }
+
+        #algoDesc {
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        #algoType {
+            font-size: 13px;
+            font-weight: 800;
         }
 
         .history-table tr:last-child td {
@@ -1346,6 +1489,20 @@
                 <button class="nav-btn" onclick="switchTab('history',this)">History</button>
                 <button class="nav-btn" onclick="switchTab('algorithm',this)">Algorithm</button>
             </nav>
+            <div class="theme-select">
+                <label for="themeSelect">Theme</label>
+                <select id="themeSelect" onchange="applyTheme(this.value)">
+                    <option value="Midnight">Midnight</option>
+                    <option value="Tokyo Night">Tokyo Night</option>
+                    <option value="Dark">Dark</option>
+                    <option value="Lighter">Lighter</option>
+                    <option value="Nord">Nord</option>
+                    <option value="Catppuccin">Catppuccin</option>
+                    <option value="Dracula">Dracula</option>
+                    <option value="One Dark">One Dark</option>
+                    <option value="Rose Pine">Rose Pine</option>
+                </select>
+            </div>
             <div class="db-status">
                 <div class="dot" id="dbDot"></div>
                 <span id="dbLabel">Connecting…</span>
@@ -1736,10 +1893,22 @@
             </button>
         </div>
         <div class="drawer-body">
-            <div class="drawer-photo">
+            <div class="drawer-photo reveal" data-reveal>
                 <img id="drawerFoodImg" alt="Food photo" />
             </div>
-            <div class="drawer-hint">Tip: press <span style="font-family:var(--font-mono);color:var(--text);">Esc</span> to close.</div>
+            <div class="nutri-grid reveal" data-reveal id="nutriGrid"></div>
+
+            <div class="drawer-section reveal" data-reveal>
+                <div class="drawer-section-title" style="color:var(--green)">Advantages</div>
+                <ul class="drawer-list" id="nutriPros"></ul>
+            </div>
+
+            <div class="drawer-section reveal" data-reveal>
+                <div class="drawer-section-title" style="color:var(--rose)">Disadvantages</div>
+                <ul class="drawer-list" id="nutriCons"></ul>
+            </div>
+
+            <div class="drawer-hint reveal" data-reveal>Tip: press <span style="font-family:var(--font-mono);color:var(--text);">Esc</span> to close.</div>
         </div>
     </aside>
 
@@ -1762,20 +1931,116 @@
         ];
 
         const ITEM_IMAGES = {
-            biryani: 'https://images.unsplash.com/photo-1599043513900-ed6fe01d3833?auto=format&fit=crop&w=1200&q=80',
-            dosa: 'https://images.unsplash.com/photo-1660325878618-ec0b96f2ef27?auto=format&fit=crop&w=1200&q=80',
-            samosa: 'https://images.unsplash.com/photo-1604908554086-7c2c56f1d9a1?auto=format&fit=crop&w=1200&q=80',
-            chapati: 'https://images.unsplash.com/photo-1617692850144-1d66f0ac4d1f?auto=format&fit=crop&w=1200&q=80',
-            pulao: 'https://images.unsplash.com/photo-1589302168068-964664d93dc0?auto=format&fit=crop&w=1200&q=80',
-            idly: 'https://images.unsplash.com/photo-1630383249896-424e5c9c3ac8?auto=format&fit=crop&w=1200&q=80',
-            noodles: 'https://images.unsplash.com/photo-1612929633738-8fe44f7ec841?auto=format&fit=crop&w=1200&q=80',
-            sandwich: 'https://images.unsplash.com/photo-1553909489-cd47e0907980?auto=format&fit=crop&w=1200&q=80',
+            samosa: 'samosa.webp',
+            pulao: 'Brice.jpg',
+            idly: 'sambaridly.jpg',
+            biryani: 'spvegB.jpg',
+            dosa: 'masaladosa.jpg',
+            chapati: 'chapati.webp',
+            noodles: 'vednoo.webp',
+            sandwich: 'sand.webp',
         };
+
+        const NUTRITION = {
+            biryani: {
+                per: 'per 1 serving',
+                stats: { calories: '320 kcal', protein: '8 g', carbs: '55 g', fat: '8 g', fiber: '3 g', sodium: '680 mg' },
+                pros: ['Good energy for lunch', 'Filling meal; reduces snacking', 'Contains vegetables/spices with antioxidants'],
+                cons: ['Can be high in carbs', 'Portion size matters for weight goals', 'May be higher in sodium depending on masala'],
+            },
+            dosa: {
+                per: 'per 1 dosa',
+                stats: { calories: '230 kcal', protein: '6 g', carbs: '38 g', fat: '6 g', fiber: '2 g', sodium: '520 mg' },
+                pros: ['Fermented batter supports digestion', 'Lighter than fried snacks', 'Works well with protein sides like sambar'],
+                cons: ['Can be low protein if eaten alone', 'Extra oil/ghee increases calories', 'High refined carbs if over-processed'],
+            },
+            samosa: {
+                per: 'per 1 piece',
+                stats: { calories: '260 kcal', protein: '5 g', carbs: '28 g', fat: '14 g', fiber: '3 g', sodium: '420 mg' },
+                pros: ['Quick energy snack', 'Potato/peas add satiety', 'Tastes good and boosts satisfaction'],
+                cons: ['Fried; higher fats', 'Not ideal daily for heart health', 'Calorie dense for small portion'],
+            },
+            chapati: {
+                per: '2 chapati + dal',
+                stats: { calories: '310 kcal', protein: '12 g', carbs: '48 g', fat: '7 g', fiber: '6 g', sodium: '420 mg' },
+                pros: ['Balanced carbs + protein combo', 'Higher fiber if whole wheat', 'Good for steady energy'],
+                cons: ['Too much ghee increases calories', 'Dal can be salty if over-seasoned', 'May feel heavy if portion is large'],
+            },
+            pulao: {
+                per: 'per 1 serving',
+                stats: { calories: '280 kcal', protein: '7 g', carbs: '50 g', fat: '6 g', fiber: '3 g', sodium: '540 mg' },
+                pros: ['Moderate calories compared to biryani', 'Vegetables add micronutrients', 'Comfort meal; good satiety'],
+                cons: ['Primarily carb-based', 'Oil can add hidden calories', 'Lower protein without curd/legumes'],
+            },
+            idly: {
+                per: '3 idly + sambar',
+                stats: { calories: '240 kcal', protein: '9 g', carbs: '44 g', fat: '3 g', fiber: '5 g', sodium: '480 mg' },
+                pros: ['Steamed; low fat', 'Easy to digest', 'Sambar adds fiber and protein'],
+                cons: ['Can be carb-heavy without enough sambar', 'Chutney can increase fat/sodium', 'May need extra protein for athletes'],
+            },
+            noodles: {
+                per: 'per 1 bowl',
+                stats: { calories: '330 kcal', protein: '9 g', carbs: '52 g', fat: '10 g', fiber: '4 g', sodium: '720 mg' },
+                pros: ['Quick meal; convenient', 'Vegetables improve vitamins', 'Good post-activity energy'],
+                cons: ['Can be high sodium', 'Refined carbs if not whole grain', 'Oil content may be high'],
+            },
+            sandwich: {
+                per: 'per 1 sandwich',
+                stats: { calories: '290 kcal', protein: '10 g', carbs: '36 g', fat: '11 g', fiber: '4 g', sodium: '640 mg' },
+                pros: ['Good protein if paneer/cheese added', 'Portable and filling', 'Can include veggies easily'],
+                cons: ['May be high in fats with spreads', 'Refined bread can spike glucose', 'Sodium can be high with sauces'],
+            },
+        };
+
+        function renderNutri(itemId) {
+            const data = NUTRITION[itemId];
+            const grid = document.getElementById('nutriGrid');
+            const pros = document.getElementById('nutriPros');
+            const cons = document.getElementById('nutriCons');
+            if (!grid || !pros || !cons) return;
+
+            if (!data) {
+                grid.innerHTML = '';
+                pros.innerHTML = '';
+                cons.innerHTML = '';
+                return;
+            }
+
+            const s = data.stats || {};
+            const items = [
+                ['Calories', s.calories],
+                ['Protein', s.protein],
+                ['Carbs', s.carbs],
+                ['Fats', s.fat],
+                ['Fiber', s.fiber],
+                ['Sodium', s.sodium],
+            ];
+
+            grid.innerHTML = items.map(([k, v]) => `
+                <div class="nutri-card">
+                    <div class="nutri-label">${k}</div>
+                    <div class="nutri-val">${v || '—'}</div>
+                </div>
+            `).join('');
+
+            pros.innerHTML = (data.pros || []).map(t => `<li>${t}</li>`).join('');
+            cons.innerHTML = (data.cons || []).map(t => `<li>${t}</li>`).join('');
+
+            const meta = document.getElementById('drawerFoodMeta');
+            if (meta) meta.textContent = `${(MENU.find(m => m.id === itemId) || {}).cat || '—'} • ${data.per || 'per serving'} • click outside to close`;
+        }
+
+        function runDrawerReveal() {
+            const drawer = document.getElementById('foodDrawer');
+            const nodes = Array.from(drawer.querySelectorAll('[data-reveal]'));
+            nodes.forEach(n => n.classList.remove('show'));
+            nodes.forEach((n, i) => setTimeout(() => n.classList.add('show'), 30 + i * 55));
+        }
 
         const ALGO_INFO = {
             name: 'Heuristic Multiplicative Weighting Model',
             type: 'Rule-based scoring (interpretable)',
-            desc: 'A deterministic baseline-demand model that multiplies interpretable weights for day, meal, weather, event, student scale, and an item-specific bias (plus small random noise for simulation).'
+            desc: 'A transparent scoring system that multiplies baseline demand by weighted factors (day, meal, weather, event, crowd). Each factor produces an interpretable impact bar so you can see what influenced the prediction.'
         };
         const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
         const MEALS = ['Breakfast', 'Lunch', 'Snack', 'Dinner'];
@@ -1803,6 +2068,60 @@
         let demoMode = true;
         let historyData = [];
 
+        const PRESET_THEMES = {
+            'Midnight': { bg: '#0f172a', surface: '#1e293b', sidebar: '#1e293b', text: '#f1f5f9', accent: '#38bdf8' },
+            'Tokyo Night': { bg: '#1a1b26', surface: '#24283b', sidebar: '#24283b', text: '#a9b1d6', accent: '#bb9af7' },
+            'Dark': { bg: '#05070c', surface: '#0a0f18', sidebar: '#0a0f18', text: '#e7eef9', accent: '#00e5cc' },
+            'Lighter': { bg: '#f8f9fa', surface: '#ffffff', sidebar: '#ffffff', text: '#334155', accent: '#0ea5e9' },
+            'Nord': { bg: '#2e3440', surface: '#3b4252', sidebar: '#3b4252', text: '#eceff4', accent: '#88c0d0' },
+            'Catppuccin': { bg: '#1e1e2e', surface: '#181825', sidebar: '#11111b', text: '#cdd6f4', accent: '#f5c2e7' },
+            'Dracula': { bg: '#282a36', surface: '#44475a', sidebar: '#44475a', text: '#f8f8f2', accent: '#bd93f9' },
+            'One Dark': { bg: '#282c34', surface: '#21252b', sidebar: '#21252b', text: '#abb2bf', accent: '#61afef' },
+            'Rose Pine': { bg: '#191724', surface: '#1f1d2e', sidebar: '#1f1d2e', text: '#e0def4', accent: '#eb6f92' },
+        };
+
+        function hexToRgbTriplet(hex) {
+            const clean = (hex || '').replace('#', '').trim();
+            if (clean.length !== 6) return null;
+            const r = parseInt(clean.slice(0, 2), 16);
+            const g = parseInt(clean.slice(2, 4), 16);
+            const b = parseInt(clean.slice(4, 6), 16);
+            if ([r, g, b].some(v => Number.isNaN(v))) return null;
+            return `${r}, ${g}, ${b}`;
+        }
+
+        function applyTheme(themeName, persist = true) {
+            const theme = PRESET_THEMES[themeName];
+            if (!theme) return;
+
+            const root = document.documentElement;
+            const accentRgb = hexToRgbTriplet(theme.accent) || '0, 229, 204';
+            const textRgb = hexToRgbTriplet(theme.text) || '231, 238, 249';
+            const bgRgb = hexToRgbTriplet(theme.bg) || '5, 7, 12';
+            const surfaceRgb = hexToRgbTriplet(theme.surface) || '10, 15, 24';
+
+            root.style.setProperty('--bg', theme.bg);
+            root.style.setProperty('--bg2', theme.surface);
+            root.style.setProperty('--bg3', theme.sidebar);
+            root.style.setProperty('--bg-rgb', bgRgb);
+            root.style.setProperty('--surface-rgb', surfaceRgb);
+            root.style.setProperty('--text', theme.text);
+            root.style.setProperty('--accent', theme.accent);
+            root.style.setProperty('--accent-rgb', accentRgb);
+            root.style.setProperty('--teal', theme.accent);
+            root.style.setProperty('--shadow', `0 8px 40px rgba(${accentRgb}, 0.10)`);
+            root.style.setProperty('--border', `rgba(${textRgb}, 0.14)`);
+            root.style.setProperty('--border2', `rgba(${accentRgb}, 0.22)`);
+            root.style.setProperty('--muted', `rgba(${textRgb}, 0.58)`);
+            root.style.setProperty('--muted2', `rgba(${textRgb}, 0.35)`);
+
+            root.style.colorScheme = themeName === 'Lighter' ? 'light' : 'dark';
+
+            const sel = document.getElementById('themeSelect');
+            if (sel && sel.value !== themeName) sel.value = themeName;
+            if (persist) localStorage.setItem('presetTheme', themeName);
+        }
+
         function openFoodDrawer(itemId) {
             const item = MENU.find(m => m.id === itemId) || { id: itemId, name: itemId, cat: '—' };
             const overlay = document.getElementById('drawerOverlay');
@@ -1812,10 +2131,13 @@
             document.getElementById('drawerFoodMeta').textContent = `${item.cat || '—'} • click outside to close`;
             img.src = ITEM_IMAGES[itemId] || ITEM_IMAGES.biryani;
 
+            renderNutri(itemId);
+
             overlay.classList.add('show');
             drawer.classList.add('open');
             drawer.setAttribute('aria-hidden', 'false');
             lucide.createIcons();
+            runDrawerReveal();
         }
 
         function closeFoodDrawer() {
@@ -2321,6 +2643,7 @@
             const lbl = document.getElementById('dbLabel');
             if (state === 'connected') { dot.className = 'dot connected'; lbl.textContent = 'Supabase Connected'; }
             else if (state === 'demo') { dot.className = 'dot'; lbl.textContent = 'Demo Mode'; }
+            else if (state === 'connecting') { dot.className = 'dot'; lbl.textContent = 'Connecting…'; }
             else { dot.className = 'dot error'; lbl.textContent = 'DB Error'; }
         }
 
@@ -2447,6 +2770,9 @@
         buildChips();
         lucide.createIcons();
         setDbStatus('connecting');
+
+        const savedTheme = localStorage.getItem('presetTheme') || 'Midnight';
+        applyTheme(savedTheme, false);
 
         document.getElementById('algoName').textContent = ALGO_INFO.name;
         document.getElementById('algoType').textContent = ALGO_INFO.type;
